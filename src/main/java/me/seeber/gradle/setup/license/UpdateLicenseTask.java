@@ -1,7 +1,7 @@
 /**
  * BSD 2-Clause License
  *
- * Copyright (c) 2016, Jochen Seeber
+ * Copyright (c) 2016-2017, Jochen Seeber
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,7 +25,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
 package me.seeber.gradle.setup.license;
 
 import java.io.File;
@@ -61,7 +60,7 @@ public class UpdateLicenseTask extends ConventionTask {
      * Year for copyright information
      */
     @Input
-    private int copyrightYear;
+    private @Nullable String copyrightYear;
 
     /**
      * Name for copyright information
@@ -98,7 +97,8 @@ public class UpdateLicenseTask extends ConventionTask {
             Files.write(licenseText, licenseFile, Charsets.UTF_8);
         }
         catch (IOException e) {
-            throw Throwables.propagate(e);
+            Throwables.throwIfUnchecked(e);
+            throw new RuntimeException(e);
         }
     }
 
@@ -113,8 +113,8 @@ public class UpdateLicenseTask extends ConventionTask {
             licenseText = licenseText.replaceAll("\\[fullname\\]", getCopyrightName());
         }
 
-        if (getCopyrightYear() > 0) {
-            licenseText = licenseText.replaceAll("\\[year\\]", Integer.toString(getCopyrightYear()));
+        if (!Strings.isNullOrEmpty(getCopyrightYear())) {
+            licenseText = licenseText.replaceAll("\\[year\\]", getCopyrightYear());
         }
 
         return licenseText;
@@ -143,7 +143,7 @@ public class UpdateLicenseTask extends ConventionTask {
      *
      * @return Year for the copyright information
      */
-    public int getCopyrightYear() {
+    public @Nullable String getCopyrightYear() {
         return this.copyrightYear;
     }
 
@@ -152,7 +152,7 @@ public class UpdateLicenseTask extends ConventionTask {
      *
      * @param copyrightYear Year for the copyright information
      */
-    public void setCopyrightYear(int copyrightYear) {
+    public void setCopyrightYear(@Nullable String copyrightYear) {
         this.copyrightYear = copyrightYear;
     }
 

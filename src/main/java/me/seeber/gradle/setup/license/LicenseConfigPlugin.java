@@ -1,7 +1,7 @@
 /**
  * BSD 2-Clause License
  *
- * Copyright (c) 2016, Jochen Seeber
+ * Copyright (c) 2016-2017, Jochen Seeber
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -28,12 +28,17 @@
 
 package me.seeber.gradle.setup.license;
 
+import java.time.LocalDate;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 import org.gradle.api.Task;
 import org.gradle.api.internal.ConventionMapping;
 import org.gradle.api.internal.file.FileOperations;
 import org.gradle.api.plugins.ExtensionContainer;
+import org.gradle.api.plugins.ExtraPropertiesExtension;
+import org.gradle.api.tasks.Copy;
 import org.gradle.model.Defaults;
 import org.gradle.model.Each;
 import org.gradle.model.Model;
@@ -42,6 +47,7 @@ import org.gradle.model.Mutate;
 import org.gradle.model.RuleSource;
 import org.gradle.model.internal.core.Hidden;
 
+import groovy.lang.GroovyObject;
 import me.seeber.gradle.plugin.AbstractProjectConfigPlugin;
 import me.seeber.gradle.project.base.ProjectConfig;
 import me.seeber.gradle.project.base.ProjectConfigPlugin;
@@ -81,7 +87,7 @@ public class LicenseConfigPlugin extends AbstractProjectConfigPlugin {
         @Defaults
         public void initializeLicenseExtension(LicenseExtension licenseExtension, ProjectConfig projectConfig,
                 FileOperations files) {
-            licenseExtension.setHeader(files.file("LICENSE.txt"));
+            licenseExtension.setHeader(files.file("src/doc/templates/LICENSE.txt"));
             licenseExtension.exclude("**/*.json");
 
             Optional.ofNullable(projectConfig.getLicense().getExcludes()).ifPresent(excludes -> {
@@ -89,6 +95,10 @@ public class LicenseConfigPlugin extends AbstractProjectConfigPlugin {
                     licenseExtension.exclude(exclude);
                 }
             });
+
+            ExtraPropertiesExtension properties = (ExtraPropertiesExtension) ((GroovyObject) licenseExtension)
+                    .getProperty("ext");
+            properties.set("year", LocalDate.now().getYear());
         }
 
         /**
@@ -106,25 +116,76 @@ public class LicenseConfigPlugin extends AbstractProjectConfigPlugin {
         }
 
         /**
+         * Create task to update license template file
+         *
+         * @param tasks Task container to create task
+         * @param projectConfig Project configuration for general project data
+         * @param licenseExtension License extension for license data
+         * @param files Resolver for file names
+         */
+        @Mutate
+        public void createLicenseTemplateUpdateTask(ModelMap<Task> tasks, ProjectConfig projectConfig,
+                LicenseExtension licenseExtension, FileOperations files) {
+            tasks.create("licenseTemplateUpdate", UpdateLicenseTask.class, t -> {
+                t.setDescription("Download configured license into license template file.");
+                t.setGroup("license");
+                t.setLicenseFile(files.file("src/doc/templates/LICENSE.txt"));
+
+                ConventionMapping parameters = t.getConventionMapping();
+                parameters.map("copyrightName", () -> projectConfig.getOrganization().getName());
+                parameters.map("copyrightYear", () -> getCopyrightYearTemplate(projectConfig));
+                parameters.map("licenseUrl", () -> projectConfig.getLicense().getSourceUrl());
+            });
+        }
+
+        /**
          * Create task to update license file
          *
          * @param tasks Task container to create task
-         * @param config Project configuration for general project data
-         * @param licenseExtension License extension for license data
+         * @param projectConfig Project configuration for general project data
+         * @param files Resolver for file names
          */
         @Mutate
-        public void createLicenseUpdateTask(ModelMap<Task> tasks, ProjectConfig config,
-                LicenseExtension licenseExtension) {
-            tasks.create("licenseUpdate", UpdateLicenseTask.class, t -> {
-                t.setDescription("Download configured license into license file.");
+        public void createLicenseUpdateTask(ModelMap<Task> tasks, ProjectConfig projectConfig, FileOperations files) {
+            tasks.create("licenseUpdate", Copy.class, t -> {
+                t.setDescription("Update license file from template.");
                 t.setGroup("license");
+                t.from(files.file("src/doc/templates/LICENSE.txt"));
+                t.into(t.getProject().getProjectDir());
 
-                ConventionMapping parameters = t.getConventionMapping();
-                parameters.map("copyrightName", () -> config.getOrganization().getName());
-                parameters.map("copyrightYear", () -> config.getInceptionYear());
-                parameters.map("licenseUrl", () -> config.getLicense().getSourceUrl());
-                parameters.map("licenseFile", () -> licenseExtension.getHeader());
+                Map<String, Object> properties = new HashMap<>();
+                properties.put("year", LocalDate.now().getYear());
+                t.expand(properties);
             });
+        }
+
+        /**
+         * Configure the task dependencies
+         *
+         * @param tasks Assemble task to configure
+         */
+        @Mutate
+        public void configureTaskDependencies(ModelMap<Task> tasks) {
+            tasks.named("assemble", t -> {
+                t.dependsOn("licenseUpdate");
+            });
+        }
+
+        /**
+         * Get the copyright years for the project
+         *
+         * @param projectConfig Project configuration
+         * @return Copyright years
+         */
+        private static String getCopyrightYearTemplate(ProjectConfig projectConfig) {
+            String year = "\\${year}";
+            Integer inceptionYear = projectConfig.getInceptionYear();
+
+            if (inceptionYear != null && inceptionYear != LocalDate.now().getYear()) {
+                year = inceptionYear.toString() + "-" + year;
+            }
+
+            return year;
         }
     }
 
@@ -136,5 +197,4 @@ public class LicenseConfigPlugin extends AbstractProjectConfigPlugin {
         getProject().getPluginManager().apply(ProjectConfigPlugin.class);
         getProject().getPluginManager().apply(LicensePlugin.class);
     }
-
 }
