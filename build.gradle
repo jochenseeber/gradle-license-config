@@ -9,15 +9,16 @@ buildscript {
 
     dependencies {
         if(!project.hasProperty("bootstrap")) {
-            classpath group: "me.seeber.gradle", name: "gradle-bintray-config", version: "1.1.0"
-            classpath group: "me.seeber.gradle", name: "gradle-github-config", version: "1.1.0"
-            classpath group: "me.seeber.gradle", name: "gradle-license-config", version: "1.1.0"
-            classpath group: "me.seeber.gradle", name: "gradle-plugin-publish-config", version: "1.1.0"
+            classpath group: "me.seeber.gradle", name: "gradle-bintray-config", version: "1.1.1"
+            classpath group: "me.seeber.gradle", name: "gradle-github-config", version: "1.1.1"
+            classpath group: "me.seeber.gradle", name: "gradle-license-config", version: "1.1.1"
+            classpath group: "me.seeber.gradle", name: "gradle-plugin-publish-config", version: "1.1.1"
+            classpath group: "me.seeber.gradle", name: "gradle-project-config", version: "1.1.1"
         }
     }
 }
 
-version = "1.1.0"
+version = "1.1.1"
 group = "me.seeber.gradle"
 description = "Default configuration for the license plugin"
 
@@ -32,7 +33,10 @@ if(project.hasProperty("bootstrap")) {
         compileOnly(group: "org.eclipse.jdt", name: "org.eclipse.jdt.annotation", version: "2.0.0")
 
         testCompile(gradleTestKit())
-        testCompile(group:"org.spockframework", name: "spock-core", version: "1.0-groovy-2.4") { exclude module: "groovy-all" }
+
+        testCompile(group:"org.spockframework", name: "spock-core", version: "1.0-groovy-2.4") {
+            exclude(group: "org.codehaus.groovy", module: "groovy-all")
+        }
     }
 }
 else {
@@ -63,7 +67,7 @@ else {
 }
 
 dependencies {
-    compile(group: "me.seeber.gradle", name: "gradle-project-config", version: "1.1.0")
+    compile(group: "me.seeber.gradle", name: "gradle-project-config", version: "1.1.1")
     compile(group: "gradle.plugin.nl.javadude.gradle.plugins", name: "license-gradle-plugin", version: "0.13.1") { exclude group: "com.android.tools.build" }
 
     if(project.hasProperty("bootstrap")) {
@@ -73,8 +77,8 @@ dependencies {
         compileOnly(group: "org.eclipse.jdt", name: "org.eclipse.jdt.annotation", version: "2.0.0")
     }
     else {
-        annotations(group: "me.seeber.annotations", name: "jdk-annotations", version: "1.8.0-r.2")
-        annotations(group: "me.seeber.annotations", name: "gradle-api-annotations", version: "3.1-r.2")
+        annotations(group: "me.seeber.annotations", name: "jdk-annotations", version: "1.8.0-r.3")
+        annotations(group: "me.seeber.annotations", name: "gradle-api-annotations", version: "3.1-r.3")
     }
 }
 
